@@ -101,3 +101,14 @@ def build_features(df):
 def get_feature_columns(df):
     """Return the names of the model input columns."""
     return [c for c in df.columns if c not in NON_FEATURE_COLUMNS]
+
+
+
+
+BINARY_FEATURES = ["emp_length_missing"]
+
+
+def get_numeric_features(df):
+    """Return the names of numeric model inputs (not categorical or binary)."""
+    excluded = CATEGORICAL_FEATURES + BINARY_FEATURES
+    return [c for c in get_feature_columns(df) if c not in excluded]
