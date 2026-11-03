@@ -1,0 +1,8 @@
+,trees,train_auc,valid_auc,seconds,gap
+"simpler + cautious, slower learning",2563.0,0.7519,0.6958,78.0,0.0561
+simpler + cautious,813.0,0.7409,0.6951,28.0,0.0458
+strong regularization,458.0,0.7537,0.6949,23.0,0.0588
+simpler trees,745.0,0.7406,0.6946,25.0,0.046
+cautious with categories,419.0,0.751,0.6946,20.0,0.0564
+v1 defaults,404.0,0.7537,0.6938,20.0,0.0599
+without addr_state,475.0,0.7501,0.6923,19.0,0.0578

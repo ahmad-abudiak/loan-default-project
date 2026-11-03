@@ -5,6 +5,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, QuantileTransformer
+from lightgbm import LGBMClassifier
+from sklearn.preprocessing import OrdinalEncoder
 
 from src.features import build_features
 
@@ -32,3 +34,44 @@ def build_logistic_pipeline(numeric_features, categorical_features, binary_featu
         ("preprocess", preprocess),
         ("model", LogisticRegression(max_iter=1000)),
     ])
+
+
+def build_lightgbm_preprocessor(numeric_features, categorical_features, binary_features):
+    """Feature engineering + light preprocessing for LightGBM."""
+    preprocess = ColumnTransformer(
+        [
+            ("num", "passthrough", numeric_features),
+            ("cat", OrdinalEncoder(
+                handle_unknown="use_encoded_value",
+                unknown_value=-1,
+                encoded_missing_value=-1,
+            ), categorical_features),
+            ("bin", "passthrough", binary_features),
+        ],
+        verbose_feature_names_out=False,
+    )
+    preprocess.set_output(transform="pandas")
+
+    return Pipeline([
+        ("features", FunctionTransformer(build_features)),
+        ("preprocess", preprocess),
+    ])
+
+
+def build_lightgbm_model(**params):
+    """LightGBM classifier with sensible defaults; any setting can be overridden."""
+    settings = {
+        "n_estimators": 5000,
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "min_child_samples": 200,
+        "subsample": 0.8,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 1.0,
+        "random_state": 42,
+        "n_jobs": -1,
+        "verbose": -1,
+    }
+    settings.update(params)
+    return LGBMClassifier(**settings)
