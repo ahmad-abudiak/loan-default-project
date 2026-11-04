@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, QuantileTransformer
 from lightgbm import LGBMClassifier
 from sklearn.preprocessing import OrdinalEncoder
+import numpy as np
 
 from src.features import build_features
 
@@ -75,3 +76,23 @@ def build_lightgbm_model(**params):
     }
     settings.update(params)
     return LGBMClassifier(**settings)
+
+
+
+def logit(p):
+    """Convert probabilities to log-odds (the scale logistic regression works on)."""
+    p = np.clip(p, 1e-6, 1 - 1e-6)
+    return np.log(p / (1 - p))
+
+
+class CalibratedModel:
+    """A trained pipeline plus a probability correction (Platt scaling)."""
+
+    def __init__(self, pipeline, calibrator):
+        self.pipeline = pipeline
+        self.calibrator = calibrator
+
+    def predict_proba(self, X):
+        raw = self.pipeline.predict_proba(X)[:, 1]
+        corrected = self.calibrator.predict_proba(logit(raw).reshape(-1, 1))[:, 1]
+        return np.column_stack([1 - corrected, corrected])
