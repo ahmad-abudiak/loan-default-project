@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import json
+from pathlib import Path
 
 from src.app_support import (
     EMP_LENGTH_OPTIONS, MAIN_COLUMNS, build_applicant, friendly_name, log_prediction,
@@ -41,6 +43,14 @@ def get_engine_or_none():
         return engine
     except Exception:
         return None
+
+
+@st.cache_data
+def load_results():
+    return {
+        "metrics": json.loads(Path("results/metrics.json").read_text()),
+        "policy_results": pd.read_csv("results/policy_test_results.csv", index_col=0),
+    }
 
 
 assets = load_assets()
@@ -347,7 +357,126 @@ with tab_score:
                          "don't enter real personal data.")
 
 with tab_performance:
-    st.info("Coming in stage 2.")
+    results = load_results()
+    metrics = results["metrics"]
+    lgbm_m = metrics["lightgbm"]
+
+    st.subheader("Results on the test set (Jul–Dec 2015)")
+    st.caption(f"{metrics['test_loans']:,} loans the model never saw during training, tuning, "
+               f"or calibration. Actual default rate: {metrics['actual_default_rate'] * 100:.1f}%.")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("AUC", f"{lgbm_m['auc']:.3f}")
+    c2.metric("Gini", f"{lgbm_m['gini']:.3f}")
+    c3.metric("KS", f"{lgbm_m['ks']:.3f}")
+    c4.metric("Average predicted risk", f"{lgbm_m['avg_predicted'] * 100:.1f}%",
+              help="Compare with the actual default rate above: close values mean good calibration.")
+
+    st.markdown("**Ranking quality compared with alternatives**")
+    comparison = pd.DataFrame({
+        "Model": ["LightGBM (this app)", "Logistic regression baseline", "Lending Club sub-grade"],
+        "Test AUC": [lgbm_m["auc"], metrics["logistic_regression_auc"],
+                     metrics["lending_club_sub_grade_auc"]],
+    })
+    comparison["Gini"] = 2 * comparison["Test AUC"] - 1
+    st.dataframe(comparison.round(3), hide_index=True, use_container_width=True)
+
+    lead = metrics["lead_over_sub_grade"]
+    st.caption(f"Lead over Lending Club's sub-grade: {lead['mean']:+.3f} AUC "
+               f"(95% bootstrap interval {lead['ci_95_low']:.3f} to {lead['ci_95_high']:.3f}).")
+
+    st.markdown("**Business result of the approval policy**")
+    pr = results["policy_results"]
+    gain = pr.loc["LightGBM policy", "gain_vs_approve_all"]
+    st.write(f"Rejecting applicants with a predicted risk of {policy['cutoff'] * 100:.0f}% or more "
+             f"(cut-off chosen on Jan–Jun 2015) would have earned **${gain:.2f} million more** "
+             f"than approving everyone on the test loans.")
+    policy_table = pr.rename(columns={
+        "approval_rate_pct": "Approved (%)",
+        "default_rate_approved_pct": "Default rate of approved (%)",
+        "profit_millions": "Profit ($M)",
+        "gain_vs_approve_all": "Gain vs approve all ($M)",
+    })
+    st.dataframe(policy_table.round(2), use_container_width=True)
+
+    st.markdown("**Charts**")
+    charts = [
+        ("roc_curves_validation.png", "ROC curves (validation, Jan–Jun 2015)"),
+        ("calibration_test.png", "Calibration on the test set"),
+        ("profit_by_cutoff_validation.png", "Profit by cut-off (validation)"),
+        ("shap_importance.png", "Most important features (SHAP)"),
+    ]
+    left_col, right_col = st.columns(2)
+    for i, (file_name, caption) in enumerate(charts):
+        path = Path("results/figures") / file_name
+        target_col = left_col if i % 2 == 0 else right_col
+        if path.exists():
+            target_col.image(str(path), caption=caption, use_container_width=True)
+        else:
+            target_col.warning(f"Chart not found: {file_name}")
 
 with tab_history:
-    st.info("Coming in stage 2.")
+    if engine is None:
+        st.info("The prediction history needs the SQL Server database, which isn't available here.")
+    else:
+        st.button("Refresh")
+
+        summary = pd.read_sql(
+            "SELECT decision, COUNT(*) AS predictions FROM dbo.prediction_log GROUP BY decision",
+            engine,
+        )
+        total = int(summary["predictions"].sum()) if len(summary) else 0
+        counts = dict(zip(summary["decision"], summary["predictions"]))
+
+        h1, h2, h3, h4 = st.columns(4)
+        h1.metric("Predictions logged", f"{total:,}")
+        h2.metric("Approve", counts.get("Approve", 0))
+        h3.metric("Review", counts.get("Review", 0))
+        h4.metric("Reject", counts.get("Reject", 0))
+
+        st.markdown("**Latest predictions**")
+        latest = pd.read_sql(
+            """
+            SELECT TOP 20 log_id, log_time, source, loan_amnt, annual_inc, fico, dti,
+                   probability, decision, reason_1, actual_default
+            FROM dbo.prediction_log
+            ORDER BY log_id DESC
+            """,
+            engine,
+        )
+        latest["probability"] = (latest["probability"] * 100).round(1).astype(str) + "%"
+        latest["reason_1"] = latest["reason_1"].map(friendly_name)
+        latest["actual_default"] = latest["actual_default"].map(
+            {0: "Repaid", 1: "Defaulted"}
+        ).fillna("")
+        latest = latest.rename(columns={
+            "log_time": "Time (UTC)", "source": "Source", "loan_amnt": "Loan",
+            "annual_inc": "Income", "fico": "FICO", "dti": "DTI",
+            "probability": "Risk", "decision": "Decision",
+            "reason_1": "Main reason", "actual_default": "Actual outcome",
+        })
+        st.dataframe(latest, hide_index=True, use_container_width=True)
+
+        st.markdown("**How did the app do on unedited test loans?**")
+        checked = pd.read_sql(
+            """
+            SELECT probability, actual_default
+            FROM (
+                SELECT probability, actual_default,
+                       ROW_NUMBER() OVER (PARTITION BY loan_id ORDER BY log_id DESC) AS rn
+                FROM dbo.prediction_log
+                WHERE source = 'test_loan'
+            ) AS t
+            WHERE rn = 1
+            """,
+            engine,
+        )
+        if len(checked) < 5:
+            st.caption("Score at least 5 real test loans (without editing them) to see this check.")
+        else:
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Distinct test loans scored", len(checked))
+            k2.metric("Average predicted risk", f"{checked['probability'].mean() * 100:.1f}%")
+            k3.metric("Actual default rate", f"{checked['actual_default'].mean() * 100:.1f}%")
+            st.caption("With only a handful of loans these numbers vary a lot by chance; "
+                       "they become meaningful after many scores.")
