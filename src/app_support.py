@@ -98,3 +98,26 @@ def log_prediction(engine, record):
         return True
     except Exception:
         return False
+
+
+    # Example imaginary applicants (values for the main form; everything else stays typical)
+PROFILES = {
+    "Strong applicant": {
+        "loan_amnt": 10000.0, "purpose": "credit_card", "annual_inc": 120000.0,
+        "emp_length": "10+ years", "home_ownership": "MORTGAGE", "addr_state": "CA",
+        "fico": 780.0, "dti": 8.0, "acc_open_past_24mths": 2.0,
+        "inq_last_6mths": 0.0, "revol_util": 20.0, "credit_years": 20.0,
+    },
+    "Borderline applicant": {
+        "loan_amnt": 20000.0, "purpose": "debt_consolidation", "annual_inc": 50000.0,
+        "emp_length": "2 years", "home_ownership": "RENT", "addr_state": "CA",
+        "fico": 670.0, "dti": 26.0, "acc_open_past_24mths": 9.0,
+        "inq_last_6mths": 2.0, "revol_util": 80.0, "credit_years": 8.0,
+    },
+    "High-risk applicant": {
+        "loan_amnt": 25000.0, "purpose": "small_business", "annual_inc": 30000.0,
+        "emp_length": "Not provided", "home_ownership": "RENT", "addr_state": "CA",
+        "fico": 650.0, "dti": 34.0, "acc_open_past_24mths": 15.0,
+        "inq_last_6mths": 5.0, "revol_util": 95.0, "credit_years": 4.0,
+    },
+}
