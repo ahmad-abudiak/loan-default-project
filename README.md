@@ -4,6 +4,10 @@ An end-to-end credit risk project: from 2.26 million raw loan records to a calib
 
 **Headline result:** on loans issued in July–December 2015, which the model never saw during training, tuning, or calibration, a LightGBM model using only application-time information reached a **test AUC of 0.703** (Gini 0.405, KS 0.294), outperforming both a logistic regression baseline (0.687) and Lending Club's own sub-grade (0.681). A 36% approval cut-off would have earned **$2.55 million more** than approving every loan in that period.
 
+
+**Live demo:** https://your-app-name.streamlit.app (may take a minute to wake up if nobody has used it recently)
+
+
 ![App screenshot](docs/app_screenshot_pd.png)
 
 ---
