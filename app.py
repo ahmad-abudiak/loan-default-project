@@ -188,6 +188,11 @@ with tab_score:
         a, b = st.columns(2)
         form["loan_amnt"] = a.number_input("Loan amount ($)", min_value=500.0, step=500.0,
                                            value=values["loan_amnt"], format="%.0f", key=f"loan_amnt_{v}")
+
+        #form["loan_amnt"] = a.number_input("Loan amount ($)", min_value=500.0, max_value=35000.0,
+                                           #step=500.0, value=values["loan_amnt"], format="%.0f",
+                                           #key=f"loan_amnt_{v}")
+        
         purposes = options_for("purpose")
         form["purpose"] = b.selectbox("Purpose", purposes,
                                       index=purposes.index(values["purpose"]), key=f"purpose_{v}")

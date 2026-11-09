@@ -254,10 +254,10 @@ loan-default-project/
 
 ## How to reproduce
 
-**Requirements:** Python 3.11 or 3.12, SQL Server (any edition, including Express or Developer) with ODBC Driver 17 or 18, and about 5 GB of free disk space.
+**Requirements:** Python 3.11 or later (developed with 3.13), SQL Server (any edition, including Express or Developer) with ODBC Driver 17 or 18, and about 5 GB of free disk space.
 
 ```bash
-git clone https://github.com/<your-username>/loan-default-project.git
+git clone https://github.com/ahmad-abudiak/loan-default-project.git
 cd loan-default-project
 python -m venv .venv
 .venv\Scripts\activate          # Windows

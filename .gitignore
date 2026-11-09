@@ -1,6 +1,9 @@
-   .venv/
-   data/
-   models/
-   __pycache__/
-   .ipynb_checkpoints/
-   *.db
+.venv/
+data/
+models/*
+!models/lightgbm_v2_calibrated.joblib
+!models/typical_applicant.parquet
+!models/demo_loans.parquet
+__pycache__/
+.ipynb_checkpoints/
+*.db
