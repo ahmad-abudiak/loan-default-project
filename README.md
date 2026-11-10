@@ -194,6 +194,31 @@ The data contains no race, gender, or age, so a full fairness audit isn't possib
 
 ---
 
+## Early default (90+ days within 12 months)
+
+Banks usually define default as **90+ days past due within the first 12 months**. Lending Club publishes each loan's final status but not its monthly payment history, so this was approximated as: **charged off, with the last payment within 8 months of issue** (8 months of payments, then about 90 days of missed payments by month 12). Borrowers who fell 90 days behind but later caught up can't be detected.
+
+- **Only 20% of defaults are early:** 16,908 of 85,955. Early default is rare: **2.7%** of loans.
+- A separate LightGBM model was trained on this target, with the same 62 features and settings as the main model.
+
+**Test results (Jul–Dec 2015), AUC on early default:**
+
+| Model | AUC | KS |
+|---|---|---|
+| Lending Club sub-grade | 0.723 | 0.332 |
+| Early-default model | 0.719 | 0.321 |
+| Main model (eventual default) | 0.714 | 0.317 |
+
+**Findings**
+
+- **Early defaults are easier to predict** than defaults at any time (0.719 vs 0.703): application-day information says more about the next year than about year three.
+- **A specialized model helps, a little:** the early model beats the main model on early default by +0.005 AUC (95% bootstrap interval 0.001 to 0.009).
+- **Lending Club's grade matches or slightly beats both models on early default** (the difference with the early model isn't statistically clear), even though our main model clearly beats it over the loan's full life. A likely reason: early defaults often stem from application-time problems (over-borrowing, misstated income), which Lending Club's private checks can detect but public data can't.
+- **Calibration holds on unseen data:** 2.88% predicted vs 2.89% actual.
+- **The two models disagree at the high-risk end:** their rankings correlate at 0.87, but they share only 51% of their riskiest 5% of applicants. Combining them (for example, reviewing applicants flagged by either) is a promising next step.
+
+---
+
 ## The app
 
 A Streamlit app with three tabs:
@@ -302,16 +327,6 @@ streamlit run app.py
 - **Range of the training data:** the largest loan in the data is $35,000; predictions for larger amounts are extrapolations.
 - **Demo inputs:** manual entries in the app use typical values for 50 of the 62 features, so they approximate real credit reports.
 
----
-
-## Future work
-
-- Redo the data preparation in pandas and confirm identical results
-- Predict **90+ days past due within 12 months** (the banking standard), approximately with Lending Club data, or exactly with the Freddie Mac loan-level dataset
-- Use `emp_title` (free-text job title) as a feature
-- Compare test results with and without `addr_state`, and monitor state-level calibration
-- Risk-based pricing instead of approve / reject decisions
-- Deploy the app online, with a FastAPI service and Docker
 
 ---
 
