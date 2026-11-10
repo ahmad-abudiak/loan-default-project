@@ -4,6 +4,7 @@ models/*
 !models/lightgbm_v2_calibrated.joblib
 !models/typical_applicant.parquet
 !models/demo_loans.parquet
+!models/lightgbm_early_calibrated.joblib
 __pycache__/
 .ipynb_checkpoints/
 *.db
