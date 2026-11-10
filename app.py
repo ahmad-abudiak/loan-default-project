@@ -1,13 +1,12 @@
 """Loan default risk: Streamlit demo app."""
 
-import json
-from pathlib import Path
-
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import json
+from pathlib import Path
 
 from src.app_support import (
     EMP_LENGTH_OPTIONS, MAIN_COLUMNS, build_applicant, friendly_name, log_prediction,
@@ -24,12 +23,9 @@ st.set_page_config(page_title="Loan default risk", layout="wide")
 @st.cache_resource
 def load_assets():
     model = joblib.load("models/lightgbm_v2_calibrated.joblib")
-    early_model = joblib.load("models/lightgbm_early_calibrated.joblib")
     return {
         "model": model,
         "explainer": make_explainer(model),
-        "early_model": early_model,
-        "early_explainer": make_explainer(early_model),
         "policy": load_policy("results/policy.json"),
         "typical": pd.read_parquet("models/typical_applicant.parquet"),
         "demo_loans": pd.read_parquet("models/demo_loans.parquet"),
@@ -51,11 +47,9 @@ def get_engine_or_none():
 
 @st.cache_data
 def load_results():
-    early_path = Path("results/early_default_results.json")
     return {
         "metrics": json.loads(Path("results/metrics.json").read_text()),
         "policy_results": pd.read_csv("results/policy_test_results.csv", index_col=0),
-        "early": json.loads(early_path.read_text()) if early_path.exists() else None,
     }
 
 
@@ -175,7 +169,7 @@ def reset_to_typical():
 # ---------- Page ----------
 
 st.title("Loan default risk")
-st.caption("LightGBM models trained on Lending Club loans issued 2007–2014, "
+st.caption("LightGBM model trained on Lending Club loans issued 2007–2014, "
            "calibrated and evaluated on 2015 loans.")
 
 tab_score, tab_performance, tab_history = st.tabs(
@@ -198,7 +192,7 @@ with tab_score:
         #form["loan_amnt"] = a.number_input("Loan amount ($)", min_value=500.0, max_value=35000.0,
                                            #step=500.0, value=values["loan_amnt"], format="%.0f",
                                            #key=f"loan_amnt_{v}")
-
+        
         purposes = options_for("purpose")
         form["purpose"] = b.selectbox("Purpose", purposes,
                                       index=purposes.index(values["purpose"]), key=f"purpose_{v}")
@@ -258,10 +252,6 @@ with tab_score:
         decision = decide(probability, policy["cutoff"], policy["review_margin"])
         reasons = explain_applicant(model, assets["explainer"], applicant, top_n=len(applicant.columns))
 
-        early_probability = float(assets["early_model"].predict_proba(applicant)[:, 1][0])
-        early_reasons = explain_applicant(assets["early_model"], assets["early_explainer"],
-                                          applicant, top_n=5)
-
         loaded = st.session_state["loaded_loan"]
         edited = False
         if loaded:
@@ -284,7 +274,6 @@ with tab_score:
                                     "acc_open_past_24mths", "inq_last_6mths",
                                     "revol_util", "credit_years"]},
             "probability": probability,
-            "early_probability": early_probability,
             "decision": decision,
             "reason_1": reasons.loc[0, "feature"],
             "reason_2": reasons.loc[1, "feature"],
@@ -296,7 +285,6 @@ with tab_score:
         st.session_state["result"] = {
             "probability": probability, "decision": decision,
             "reasons": reasons, "saved": saved, "edited": edited,
-            "early_probability": early_probability, "early_reasons": early_reasons,
         }
 
     with right:
@@ -315,13 +303,9 @@ with tab_score:
             cutoff = policy["cutoff"]
             review_start = cutoff - policy["review_margin"]
 
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Default risk (any time)", f"{p * 100:.1f}%",
-                      help="Main model: probability of default during the whole loan.")
-            m2.metric("Default risk (first 12 months)", f"{result['early_probability'] * 100:.1f}%",
-                      help="Early-default model: probability of being 90+ days late within the first "
-                           "year (approximated). Shown for information; the decision uses the main model.")
-            with m3:
+            m1, m2 = st.columns(2)
+            m1.metric("Predicted default risk", f"{p * 100:.1f}%")
+            with m2:
                 st.write("Decision")
                 if decision == "Approve":
                     st.success(decision)
@@ -343,7 +327,6 @@ with tab_score:
             )
             st.caption(f"Approve below {review_start * 100:.0f}% · Review "
                        f"{review_start * 100:.0f}–{cutoff * 100:.0f}% · Reject {cutoff * 100:.0f}% and above")
-            st.caption("For reference, an average applicant: about 14.7% any time, 2.9% in the first 12 months.")
 
             if loaded and not result["edited"]:
                 outcome = "defaulted" if loaded["target"] == 1 else "repaid"
@@ -372,13 +355,6 @@ with tab_score:
                 st.markdown("**Main reasons against approval**")
                 for f, val in zip(against["feature"], against["value"]):
                     st.markdown(f"- {friendly_name(f)}: {format_value(val)}")
-
-            with st.expander("What drives the first-year risk"):
-                for f, val, c in zip(result["early_reasons"]["feature"],
-                                     result["early_reasons"]["value"],
-                                     result["early_reasons"]["contribution"]):
-                    arrow = "↑" if c > 0 else "↓"
-                    st.markdown(f"- {arrow} {friendly_name(f)}: {format_value(val)}")
 
             st.caption(("Saved to the prediction log. " if result["saved"]
                         else "Not saved (database not available). ")
@@ -444,19 +420,6 @@ with tab_performance:
         else:
             target_col.warning(f"Chart not found: {file_name}")
 
-    early_results = results["early"]
-    if early_results:
-        st.markdown("**Second model: default in the first 12 months**")
-        st.caption(early_results["definition"] + ". Test set, Jul–Dec 2015.")
-        early_table = pd.DataFrame(early_results["test_comparison"]).set_index("model")
-        st.dataframe(early_table.round(3), use_container_width=True)
-        st.write(
-            f"Calibration: {early_results['early_model_avg_predicted'] * 100:.2f}% predicted vs "
-            f"{early_results['test_early_default_rate'] * 100:.2f}% actual. "
-            "Early defaults are easier to predict than defaults at any time; "
-            "Lending Club's grade performs about as well as the early model on them."
-        )
-
 with tab_history:
     if engine is None:
         st.info("The prediction history needs the SQL Server database, which isn't available here.")
@@ -480,16 +443,13 @@ with tab_history:
         latest = pd.read_sql(
             """
             SELECT TOP 20 log_id, log_time, source, loan_amnt, annual_inc, fico, dti,
-                   probability, early_probability, decision, reason_1, actual_default
+                   probability, decision, reason_1, actual_default
             FROM dbo.prediction_log
             ORDER BY log_id DESC
             """,
             engine,
         )
         latest["probability"] = (latest["probability"] * 100).round(1).astype(str) + "%"
-        latest["early_probability"] = latest["early_probability"].apply(
-            lambda x: "" if pd.isna(x) else f"{x * 100:.1f}%"
-        )
         latest["reason_1"] = latest["reason_1"].map(friendly_name)
         latest["actual_default"] = latest["actual_default"].map(
             {0: "Repaid", 1: "Defaulted"}
@@ -497,8 +457,8 @@ with tab_history:
         latest = latest.rename(columns={
             "log_time": "Time (UTC)", "source": "Source", "loan_amnt": "Loan",
             "annual_inc": "Income", "fico": "FICO", "dti": "DTI",
-            "probability": "Risk (any time)", "early_probability": "Risk (12 mo)",
-            "decision": "Decision", "reason_1": "Main reason", "actual_default": "Actual outcome",
+            "probability": "Risk", "decision": "Decision",
+            "reason_1": "Main reason", "actual_default": "Actual outcome",
         })
         st.dataframe(latest, hide_index=True, use_container_width=True)
 
