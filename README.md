@@ -208,6 +208,23 @@ Every prediction is logged to SQL Server with its inputs, probability, decision,
 
 ---
 
+## Power BI dashboard
+
+A four-page dashboard built on SQL Server views (`sql/10_powerbi_views.sql`):
+
+| Page | Shows |
+|---|---|
+| Portfolio overview | Volume, profit and default rate by year, grade and purpose |
+| Risk drivers | Default rate by FICO, DTI, loan-to-income, home ownership and verification |
+| Model results | Test-set decisions, profit, calibration, rejection reasons and wrongly rejected borrowers by state |
+| App monitoring | Predictions logged by the Streamlit app |
+
+![Model results page](docs/powerbi_model_results.png)
+
+Full dashboard: [PDF](powerbi/loan_default_dashboard.pdf)
+
+---
+
 ## Project structure
 
 ```
