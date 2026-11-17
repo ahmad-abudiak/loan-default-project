@@ -403,9 +403,6 @@ streamlit run app.py
 
 - Redo the data preparation in pandas and confirm identical results
 - Predict **90+ days past due within 12 months** (the banking standard), approximately with Lending Club data, or exactly with the Freddie Mac loan-level dataset
-- Use `emp_title` (free-text job title) as a feature
-- Compare test results with and without `addr_state`, and monitor state-level calibration
-- Risk-based pricing instead of approve / reject decisions
 - Deploy the app online, with a FastAPI service and Docker
 
 ---
