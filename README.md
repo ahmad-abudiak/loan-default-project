@@ -225,6 +225,84 @@ Full dashboard: [PDF](powerbi/loan_default_dashboard.pdf)
 
 ---
 
+## REST API (FastAPI + Docker)
+
+The model is also served as a REST API, so other systems can score applicants programmatically.
+It reuses the same code as the app (`src/`), so both give identical results.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/health` | GET | Check the API is running and the model is loaded |
+| `/predict` | POST | Score one applicant: probability, decision and SHAP reasons |
+| `/docs` | GET | Interactive documentation (try requests in the browser) |
+
+**Run with Docker**
+
+```bash
+docker build -t loan-default-api .
+docker run --rm -p 8000:8000 loan-default-api
+```
+
+Then open http://127.0.0.1:8000/docs.
+
+**Run without Docker**
+
+```bash
+pip install -r api/requirements.txt
+uvicorn api.main:app --reload
+```
+
+**Example request**
+
+```json
+{
+  "loan_amnt": 12000,
+  "purpose": "debt_consolidation",
+  "annual_inc": 55000,
+  "fico": 690,
+  "dti": 18.5,
+  "credit_years": 12,
+  "emp_length": "10+ years",
+  "home_ownership": "RENT",
+  "addr_state": "CA",
+  "acc_open_past_24mths": 4,
+  "inq_last_6mths": 1,
+  "revol_util": 45
+}
+```
+
+**Example response (shortened)**
+
+```json
+{
+  "probability": 0.1052,
+  "decision": "Approve",
+  "cutoff": 0.36,
+  "review_from": 0.33,
+  "top_reasons": [
+    {"feature": "home_ownership", "label": "Home ownership", "value": "RENT",
+     "contribution": 0.1069, "effect": "raises risk"}
+  ],
+  "reasons_against": []
+}
+```
+
+Inputs are validated before reaching the model: out-of-range values (e.g. a FICO score above 850,
+or a loan above the $35,000 training maximum), unknown categories and unknown fields return a 422 error
+with an explanation. Optional `extra` fields can override any of the 50 additional credit details;
+anything left out uses the typical applicant's value.
+
+**Tests**
+
+```bash
+python -m pytest tests -v
+```
+
+13 tests cover the health check, a known applicant's score (regression test), the approval policy,
+and rejection of invalid inputs.
+
+---
+
 ## Project structure
 
 ```
