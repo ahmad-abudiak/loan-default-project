@@ -190,7 +190,18 @@ The data contains no race, gender, or age, so a full fairness audit isn't possib
 
 - **Calibration is fair across income, home ownership, verification status, and most loan purposes:** average predicted risk is within about 1 percentage point of the actual rate for each group.
 - **The model ranks low-income borrowers less accurately:** AUC 0.652 for the lowest income quartile versus 0.715 for the highest. Decisions are less reliable for this group.
-- **Some states are mis-scored by 2–3 points** (for example, Tennessee over-predicted, Louisiana under-predicted), because state-level patterns shifted over time. State is kept as a feature because it adds a small amount of predictive power, but it should be monitored.
+- **Some states are mis-scored by 2–3 points** (for example, Tennessee over-predicted, Louisiana under-predicted), because state-level patterns shifted over time. State is kept as a feature; see the comparison below.
+
+**Keeping the state feature** (`notebooks/15_state_comparison.ipynb`). Two calibrated models with the same settings, one with `addr_state` and one without, were compared on the test set:
+
+| Measure | With state | Without state |
+|---|---|---|
+| Test AUC | 0.7026 | 0.7005 |
+| Gain vs approving everyone | +$2.55M | +$2.50M |
+| Average state calibration gap (33 states) | 1.03 points | 1.71 points |
+| Largest state calibration gap | 3.54 points | 4.73 points |
+
+The state adds a small but real gain (+0.0021 AUC, 95% bootstrap range 0.0012 to 0.0032). More importantly, removing it made predictions for states **less** accurate: the model became more lenient on high-risk states such as Arkansas and Oklahoma and harsher on low-risk ones such as Oregon and South Carolina, because it could no longer account for real regional differences. Removing a sensitive feature doesn't automatically make a model fairer, so the state is kept, with state-level calibration monitoring and a compliance review recommended before real use.
 
 ---
 
