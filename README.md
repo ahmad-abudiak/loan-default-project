@@ -205,6 +205,35 @@ The state adds a small but real gain (+0.0021 AUC, 95% bootstrap range 0.0012 to
 
 ---
 
+## Further experiments and model v3
+
+| Experiment | Notebook | Result | Decision |
+|---|---|---|---|
+| State with / without | 15 | State adds +0.002 AUC and halves state-level calibration gaps | Keep state |
+| Platt vs isotonic calibration | 16 | Isotonic: same AUC, but worse on several deciles and +$1.93M profit vs +$2.55M | Keep Platt |
+| Drift monitoring (PSI) | 17 | All features stable except `acc_open_past_24mths` (PSI 0.76), caused by a data-recording change (100% missing before 2012), not real drift | No action; monitor monthly |
+| Job title as a feature | 18 | Before 2013 `emp_title` held the employer's name, from 2013 the job title, so it only works on 2013+ data | Train v3 on 2013–2014 |
+
+**Model v3** (`notebooks/19_model_v3.ipynb`, app: `app_v3.py`) is trained on 2013–2014 loans
+and adds a **job type** feature: free-text job titles are cleaned and mapped to 15 families
+(e.g. Nursing, Engineering & IT, Food & hospitality) by keyword rules in `src/job_titles.py`.
+
+| Test set (Jul–Dec 2015) | v2 | v3 |
+|---|---|---|
+| AUC | 0.703 | **0.705** |
+| Lead over LC sub-grade | +0.021 | **+0.023** (95% CI 0.021–0.026) |
+| Cut-off (chosen on validation) | 36% | 34% |
+| Approval rate | 97.2% | 96.0% |
+| Gain vs approving everyone | +$2.55M | **+$3.26M** |
+
+v3 beats v2 by +0.002 AUC (95% bootstrap CI 0.001–0.003, ahead in 100% of samples).
+Calibration gaps between job types shrank from 1.5 to 0.6 points; other groups were unchanged.
+`app.py` and the API still serve v2.
+
+Run v3 locally: `streamlit run app_v3.py`
+
+---
+
 ## The app
 
 A Streamlit app with three tabs:

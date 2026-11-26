@@ -1,0 +1,14 @@
+feature,type,valid_vs_train,test_vs_train,status_test
+fico_avg,numeric,0.0202,0.0066,Stable
+dti,numeric,0.0417,0.042,Stable
+annual_inc,numeric,0.0018,0.0086,Stable
+loan_amnt,numeric,0.007,0.0133,Stable
+loan_to_income,numeric,0.0028,0.0026,Stable
+revol_util,numeric,0.0074,0.0264,Stable
+acc_open_past_24mths,numeric,0.7602,0.7612,Act
+credit_history_months,numeric,0.0141,0.0235,Stable
+predicted,numeric,0.0118,0.0061,Stable
+home_ownership,category,0.0043,0.0062,Stable
+verification_status,category,0.0603,0.1056,Watch
+purpose,category,0.0309,0.0317,Stable
+addr_state,category,0.0091,0.0493,Stable

@@ -37,7 +37,8 @@ def build_logistic_pipeline(numeric_features, categorical_features, binary_featu
     ])
 
 
-def build_lightgbm_preprocessor(numeric_features, categorical_features, binary_features):
+def build_lightgbm_preprocessor(numeric_features, categorical_features, binary_features,
+                                feature_function=build_features):
     """Feature engineering + light preprocessing for LightGBM."""
     preprocess = ColumnTransformer(
         [
@@ -54,7 +55,7 @@ def build_lightgbm_preprocessor(numeric_features, categorical_features, binary_f
     preprocess.set_output(transform="pandas")
 
     return Pipeline([
-        ("features", FunctionTransformer(build_features)),
+        ("features", FunctionTransformer(feature_function)),
         ("preprocess", preprocess),
     ])
 

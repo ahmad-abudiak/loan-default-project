@@ -7,6 +7,7 @@ training data, the test data, and a single new applicant in the app.
 
 import numpy as np
 import pandas as pd
+from src.job_titles import add_job_family
 
 
 # Columns that are never model inputs
@@ -112,3 +113,11 @@ def get_numeric_features(df):
     """Return the names of numeric model inputs (not categorical or binary)."""
     excluded = CATEGORICAL_FEATURES + BINARY_FEATURES
     return [c for c in get_feature_columns(df) if c not in excluded]
+
+
+CATEGORICAL_FEATURES_V3 = CATEGORICAL_FEATURES + ["job_family"]
+
+
+def build_features_v3(df):
+    """Version 3 features: everything in build_features, plus the job family."""
+    return add_job_family(build_features(df))

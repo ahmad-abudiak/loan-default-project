@@ -1,0 +1,7 @@
+{
+  "model": "lightgbm_v3_calibrated",
+  "cutoff": 0.34,
+  "review_margin": 0.03,
+  "chosen_on": "validation (2015-01 to 2015-06)",
+  "trained_on": "2013-01 to 2014-12, with job family"
+}

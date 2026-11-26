@@ -42,6 +42,7 @@ FRIENDLY_NAMES = {
     "mths_since_last_delinq": "Months since last delinquency",
     "pub_rec": "Public records",
     "pub_rec_bankruptcies": "Bankruptcies",
+    "job_family": "Job type",
 }
 
 EMP_LENGTH_OPTIONS = [
